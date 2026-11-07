@@ -47,6 +47,8 @@ type AppAction =
   | { type: 'SELECT_PRODUCT'; payload: ProductRecommendation | null }
   | { type: 'SHOW_CHECKOUT'; payload: boolean }
   | { type: 'TOGGLE_SIDEBAR' }
+  | { type: 'CLOSE_SIDEBAR' }
+  | { type: 'OPEN_SIDEBAR' }
   | { type: 'SET_PAGE'; payload: string };
 
 // ============================================================
@@ -82,7 +84,7 @@ I'm your AI shopping assistant. I can help you:
   spendingSummary: null,
   selectedProduct: null,
   showCheckout: false,
-  sidebarOpen: true,
+  sidebarOpen: false,
   activePage: 'assistant',
 };
 
@@ -112,8 +114,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, showCheckout: action.payload };
     case 'TOGGLE_SIDEBAR':
       return { ...state, sidebarOpen: !state.sidebarOpen };
+    case 'CLOSE_SIDEBAR':
+      return { ...state, sidebarOpen: false };
+    case 'OPEN_SIDEBAR':
+      return { ...state, sidebarOpen: true };
     case 'SET_PAGE':
-      return { ...state, activePage: action.payload };
+      return { ...state, activePage: action.payload, sidebarOpen: false };
     default:
       return state;
   }

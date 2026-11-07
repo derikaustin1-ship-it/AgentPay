@@ -80,23 +80,24 @@ export default function ChatAssistant() {
   return (
     <div className="flex flex-col h-[calc(100vh-4.5rem)] bg-slate-50/50">
       {/* Subheader / Status Banner */}
-      <div className="bg-white border-b border-slate-200/80 px-6 py-2.5 flex items-center justify-between text-xs">
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-semibold text-slate-800">Agentic Model:</span>
-          <span className="text-slate-500">Gemini 3.8 Flash</span>
-          <span className="text-slate-300">|</span>
-          <span className="text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-            Channel3 Live Product Search Connected
+      <div className="bg-white border-b border-slate-200/80 px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
+        <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <span className="font-semibold text-slate-800">Model:</span>
+          <span className="text-slate-600 font-medium">Gemini 3.8 Flash</span>
+          <span className="text-slate-300 hidden sm:inline">|</span>
+          <span className="text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[11px] sm:text-xs">
+            <span className="hidden sm:inline">Channel3 Live Search Connected</span>
+            <span className="sm:hidden">Channel3 Live</span>
           </span>
         </div>
         <button
           onClick={handleClearChat}
-          className="text-slate-400 hover:text-slate-600 flex items-center space-x-1 transition-colors"
+          className="text-slate-400 hover:text-slate-600 active:text-slate-800 flex items-center space-x-1 transition-colors min-h-[32px] px-2 rounded-lg cursor-pointer ml-auto sm:ml-0"
           title="Reset conversation"
         >
           <RefreshCwIcon className="w-3.5 h-3.5" />
-          <span>Reset Chat</span>
+          <span>Reset</span>
         </button>
       </div>
 
