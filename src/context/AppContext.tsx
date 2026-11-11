@@ -1,11 +1,21 @@
 // src/context/AppContext.tsx
 // Application-wide state management using React Context
-// Manages chat messages, budget settings, and order state
+// Manages chat messages, budget settings, order state, country/currency preferences, and live exchange rates
 
 'use client';
 
-import React, { createContext, useContext, useReducer, useCallback, ReactNode } from 'react';
-import { ChatMessage, UserBudget, Order, SpendingSummary, ProductRecommendation } from '@/types';
+import React, { createContext, useContext, useReducer, useCallback, ReactNode, useEffect } from 'react';
+import {
+  ChatMessage,
+  UserBudget,
+  Order,
+  SpendingSummary,
+  ProductRecommendation,
+  UserPreferences,
+  ExchangeRatesState,
+} from '@/types';
+import { getCountryByCode, DEFAULT_COUNTRY } from '@/lib/countries';
+import { formatCurrency, convertWithRates } from '@/lib/exchange-rates';
 
 // ============================================================
 // State Types
@@ -34,6 +44,14 @@ interface AppState {
   
   // Active page
   activePage: string;
+
+  // Country & Currency Preferences
+  userPreferences: UserPreferences | null;
+  exchangeRates: Record<string, number> | null;
+  ratesTimestamp: string | null;
+  ratesSource: string | null;
+  showCountrySelector: boolean;
+  hasLoadedPreferences: boolean;
 }
 
 type AppAction =
@@ -49,7 +67,12 @@ type AppAction =
   | { type: 'TOGGLE_SIDEBAR' }
   | { type: 'CLOSE_SIDEBAR' }
   | { type: 'OPEN_SIDEBAR' }
-  | { type: 'SET_PAGE'; payload: string };
+  | { type: 'SET_PAGE'; payload: string }
+  | { type: 'SET_USER_PREFERENCES'; payload: UserPreferences }
+  | { type: 'SET_EXCHANGE_RATES'; payload: ExchangeRatesState }
+  | { type: 'OPEN_COUNTRY_SELECTOR' }
+  | { type: 'CLOSE_COUNTRY_SELECTOR' }
+  | { type: 'SET_LOADED_PREFERENCES'; payload: boolean };
 
 // ============================================================
 // Initial State
@@ -62,19 +85,17 @@ const initialState: AppState = {
       role: 'assistant',
       content: `# 👋 Welcome to AgentPay!
 
-I'm your AI shopping assistant. I can help you:
+I'm your AI shopping assistant with global multi-currency intelligence and budget protection.
 
-- 🔍 **Find products** matching your needs
-- 📊 **Compare options** across price, features, and ratings
-- 💰 **Manage your budget** to avoid overspending
-- 💳 **Process payments** through PayPal Sandbox
+- 🔍 **Global Product Discovery** matching your criteria
+- 💱 **Live Currency Localisation** for your country
+- 🛡️ **Autonomous Spending Guard** protecting your budget
+- 💳 **PayPal Sandbox Checkout** verified & captured securely
 
 **Try asking me something like:**
 - "Find wireless headphones under $100"
-- "Find a birthday gift for someone who loves hiking, budget $50"
-- "Compare affordable smartwatches"
-
-*Note: I currently search a demo product catalogue. Results are demonstration data.*`,
+- "Suggest a great mechanical keyboard for coding"
+- "Find trail running shoes under 80 dollars"`,
       timestamp: new Date().toISOString(),
     },
   ],
@@ -86,6 +107,12 @@ I'm your AI shopping assistant. I can help you:
   showCheckout: false,
   sidebarOpen: false,
   activePage: 'assistant',
+  userPreferences: null,
+  exchangeRates: null,
+  ratesTimestamp: null,
+  ratesSource: null,
+  showCountrySelector: false,
+  hasLoadedPreferences: false,
 };
 
 // ============================================================
@@ -120,6 +147,21 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, sidebarOpen: true };
     case 'SET_PAGE':
       return { ...state, activePage: action.payload, sidebarOpen: false };
+    case 'SET_USER_PREFERENCES':
+      return { ...state, userPreferences: action.payload };
+    case 'SET_EXCHANGE_RATES':
+      return {
+        ...state,
+        exchangeRates: action.payload.rates,
+        ratesTimestamp: action.payload.timestamp,
+        ratesSource: action.payload.source,
+      };
+    case 'OPEN_COUNTRY_SELECTOR':
+      return { ...state, showCountrySelector: true };
+    case 'CLOSE_COUNTRY_SELECTOR':
+      return { ...state, showCountrySelector: false };
+    case 'SET_LOADED_PREFERENCES':
+      return { ...state, hasLoadedPreferences: action.payload };
     default:
       return state;
   }
@@ -128,6 +170,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
 // ============================================================
 // Context
 // ============================================================
+
+export interface ConvertedPriceInfo {
+  displayAmount: number;
+  displayCurrency: string;
+  originalAmount: number;
+  originalCurrency: string;
+  exchangeRate: number;
+  isConverted: boolean;
+  formatted: string;
+  formattedOriginal: string;
+}
 
 interface AppContextType {
   state: AppState;
@@ -142,6 +195,13 @@ interface AppContextType {
   proceedToCheckout: () => void;
   selectProductForCheckout: (product: ProductRecommendation) => void;
   cancelCheckout: () => void;
+  loadUserPreferences: () => Promise<void>;
+  saveUserPreferences: (countryCode: string, currencyCode: string) => Promise<boolean>;
+  loadExchangeRates: () => Promise<void>;
+  openCountrySelector: () => void;
+  closeCountrySelector: () => void;
+  getConvertedPrice: (amountUSD: number) => ConvertedPriceInfo;
+  formatPrice: (amountUSD: number) => string;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -153,61 +213,191 @@ const AppContext = createContext<AppContextType | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  const sendMessage = useCallback(async (content: string) => {
-    // Add user message
-    const userMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString(),
-    };
-    dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
-    dispatch({ type: 'SET_PROCESSING', payload: true });
-
+  // Load live exchange rates
+  const loadExchangeRates = useCallback(async () => {
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: content,
-          history: state.messages.slice(-10),
-        }),
-      });
+      const res = await fetch('/api/exchange-rates');
+      const json = await res.json();
+      if (json.success && json.data) {
+        dispatch({
+          type: 'SET_EXCHANGE_RATES',
+          payload: json.data,
+        });
+      }
+    } catch (err) {
+      console.warn('Could not load exchange rates:', err);
+    }
+  }, []);
 
-      const data = await response.json();
+  // Load user country & currency preference
+  const loadUserPreferences = useCallback(async () => {
+    try {
+      const res = await fetch('/api/user/preferences');
+      const json = await res.json();
+      if (json.success) {
+        if (json.data) {
+          dispatch({ type: 'SET_USER_PREFERENCES', payload: json.data });
+        } else {
+          // First visit: show country selector modal
+          dispatch({ type: 'OPEN_COUNTRY_SELECTOR' });
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load user preferences:', err);
+    } finally {
+      dispatch({ type: 'SET_LOADED_PREFERENCES', payload: true });
+    }
+  }, []);
 
-      if (data.success) {
-        const assistantMessage: ChatMessage = {
-          id: `msg-${Date.now()}-resp`,
-          role: 'assistant',
-          content: data.data.message,
-          timestamp: new Date().toISOString(),
-          products: data.data.products,
+  // Save user preferences
+  const saveUserPreferences = useCallback(
+    async (countryCode: string, currencyCode: string): Promise<boolean> => {
+      try {
+        const res = await fetch('/api/user/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ countryCode, currencyCode }),
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          dispatch({ type: 'SET_USER_PREFERENCES', payload: json.data });
+          dispatch({ type: 'CLOSE_COUNTRY_SELECTOR' });
+          return true;
+        }
+        return false;
+      } catch (err) {
+        console.error('Failed to save preferences:', err);
+        return false;
+      }
+    },
+    []
+  );
+
+  const openCountrySelector = useCallback(() => {
+    dispatch({ type: 'OPEN_COUNTRY_SELECTOR' });
+  }, []);
+
+  const closeCountrySelector = useCallback(() => {
+    dispatch({ type: 'CLOSE_COUNTRY_SELECTOR' });
+  }, []);
+
+  // Convert USD price to current user display currency
+  const getConvertedPrice = useCallback(
+    (amountUSD: number): ConvertedPriceInfo => {
+      const targetCurrency = state.userPreferences?.currencyCode || 'USD';
+      const targetCountry = state.userPreferences?.country || DEFAULT_COUNTRY;
+      const isUSD = targetCurrency.toUpperCase() === 'USD';
+
+      if (isUSD || !state.exchangeRates) {
+        const formatted = formatCurrency(amountUSD, 'USD', 'en-US');
+        return {
+          displayAmount: amountUSD,
+          displayCurrency: 'USD',
+          originalAmount: amountUSD,
+          originalCurrency: 'USD',
+          exchangeRate: 1.0,
+          isConverted: false,
+          formatted,
+          formattedOriginal: formatted,
         };
-        dispatch({ type: 'ADD_MESSAGE', payload: assistantMessage });
-      } else {
+      }
+
+      const { displayAmount, rate } = convertWithRates(
+        amountUSD,
+        targetCurrency,
+        state.exchangeRates
+      );
+
+      const formatted = formatCurrency(displayAmount, targetCurrency, targetCountry.locale);
+      const formattedOriginal = formatCurrency(amountUSD, 'USD', 'en-US');
+
+      return {
+        displayAmount,
+        displayCurrency: targetCurrency,
+        originalAmount: amountUSD,
+        originalCurrency: 'USD',
+        exchangeRate: rate,
+        isConverted: true,
+        formatted,
+        formattedOriginal,
+      };
+    },
+    [state.userPreferences, state.exchangeRates]
+  );
+
+  const formatPrice = useCallback(
+    (amountUSD: number): string => {
+      const converted = getConvertedPrice(amountUSD);
+      return converted.formatted;
+    },
+    [getConvertedPrice]
+  );
+
+  // Send chat message with country & currency awareness
+  const sendMessage = useCallback(
+    async (content: string) => {
+      const userMessage: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        content,
+        timestamp: new Date().toISOString(),
+      };
+      dispatch({ type: 'ADD_MESSAGE', payload: userMessage });
+      dispatch({ type: 'SET_PROCESSING', payload: true });
+
+      try {
+        const countryCode = state.userPreferences?.countryCode || 'US';
+        const currencyCode = state.userPreferences?.currencyCode || 'USD';
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: content,
+            history: state.messages.slice(-10),
+            countryCode,
+            currencyCode,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          const assistantMessage: ChatMessage = {
+            id: `msg-${Date.now()}-resp`,
+            role: 'assistant',
+            content: data.data.message,
+            timestamp: new Date().toISOString(),
+            products: data.data.products,
+          };
+          dispatch({ type: 'ADD_MESSAGE', payload: assistantMessage });
+        } else {
+          const errorMessage: ChatMessage = {
+            id: `msg-${Date.now()}-err`,
+            role: 'assistant',
+            content: `I'm sorry, I encountered an error: ${data.error || 'Unknown error'}. Please try again.`,
+            timestamp: new Date().toISOString(),
+            error: data.error,
+          };
+          dispatch({ type: 'ADD_MESSAGE', payload: errorMessage });
+        }
+      } catch (error) {
         const errorMessage: ChatMessage = {
           id: `msg-${Date.now()}-err`,
           role: 'assistant',
-          content: `I'm sorry, I encountered an error: ${data.error || 'Unknown error'}. Please try again.`,
+          content: `I'm sorry, I couldn't process your request. Please check your connection and try again.\n\n*Error: ${
+            error instanceof Error ? error.message : 'Network error'
+          }*`,
           timestamp: new Date().toISOString(),
-          error: data.error,
+          error: error instanceof Error ? error.message : 'Network error',
         };
         dispatch({ type: 'ADD_MESSAGE', payload: errorMessage });
+      } finally {
+        dispatch({ type: 'SET_PROCESSING', payload: false });
       }
-    } catch (error) {
-      const errorMessage: ChatMessage = {
-        id: `msg-${Date.now()}-err`,
-        role: 'assistant',
-        content: `I'm sorry, I couldn't process your request. Please check your connection and try again.\n\n*Error: ${error instanceof Error ? error.message : 'Network error'}*`,
-        timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Network error',
-      };
-      dispatch({ type: 'ADD_MESSAGE', payload: errorMessage });
-    } finally {
-      dispatch({ type: 'SET_PROCESSING', payload: false });
-    }
-  }, [state.messages]);
+    },
+    [state.messages, state.userPreferences]
+  );
 
   const loadBudget = useCallback(async () => {
     try {
@@ -283,6 +473,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SHOW_CHECKOUT', payload: false });
   }, []);
 
+  // Load preferences and exchange rates on mount
+  useEffect(() => {
+    loadUserPreferences();
+    loadExchangeRates();
+  }, [loadUserPreferences, loadExchangeRates]);
+
   return (
     <AppContext.Provider
       value={{
@@ -298,6 +494,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         proceedToCheckout,
         selectProductForCheckout,
         cancelCheckout,
+        loadUserPreferences,
+        saveUserPreferences,
+        loadExchangeRates,
+        openCountrySelector,
+        closeCountrySelector,
+        getConvertedPrice,
+        formatPrice,
       }}
     >
       {children}

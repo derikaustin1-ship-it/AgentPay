@@ -117,6 +117,38 @@ export interface Order {
   paymentStatus: 'pending' | 'approved' | 'captured' | 'cancelled' | 'failed';
   createdAt: string;
   isSandbox: boolean;
+  displayAmount?: number;
+  displayCurrency?: string;
+  exchangeRate?: number;
+  rateTimestamp?: string;
+}
+
+// ============================================================
+// Country & Currency Preferences Types
+// ============================================================
+
+export interface UserPreferences {
+  countryCode: string;
+  currencyCode: string;
+  country: {
+    code: string;
+    name: string;
+    flag: string;
+    currencyCode: string;
+    currencySymbol: string;
+    locale: string;
+    paypalCheckoutSupported: boolean;
+    paypalSupportedCurrency: boolean;
+    paypalDomesticUnavailable?: boolean;
+    notes?: string;
+  };
+  updatedAt: string;
+}
+
+export interface ExchangeRatesState {
+  rates: Record<string, number>;
+  timestamp: string;
+  source: string;
 }
 
 // ============================================================

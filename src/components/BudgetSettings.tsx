@@ -15,8 +15,8 @@ import {
 } from './Icons';
 
 export default function BudgetSettings() {
-  const { state, saveBudget, loadBudget, loadSpendingSummary } = useApp();
-  const { budget } = state;
+  const { state, saveBudget, loadBudget, loadSpendingSummary, formatPrice } = useApp();
+  const { budget, userPreferences } = state;
 
   const [maxPurchase, setMaxPurchase] = useState<number>(100);
   const [dailyLimit, setDailyLimit] = useState<number>(200);
@@ -139,7 +139,14 @@ export default function BudgetSettings() {
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
                 <span>Maximum Single Purchase Limit</span>
-                <span className="text-blue-600 font-mono">${maxPurchase.toFixed(2)}</span>
+                <span className="text-blue-600 font-mono">
+                  ${maxPurchase.toFixed(2)} USD
+                  {userPreferences?.currencyCode && userPreferences.currencyCode !== 'USD' && (
+                    <span className="text-slate-400 font-normal ml-1">
+                      (≈ {formatPrice(maxPurchase)})
+                    </span>
+                  )}
+                </span>
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 font-semibold">
@@ -156,7 +163,7 @@ export default function BudgetSettings() {
                 />
               </div>
               <p className="text-[11px] text-slate-500">
-                Any item priced higher than this amount will be blocked before payment authorization.
+                Any item priced higher than this amount in USD will be blocked before payment authorization.
               </p>
             </div>
 
@@ -164,7 +171,14 @@ export default function BudgetSettings() {
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
                 <span>Daily Spending Ceiling</span>
-                <span className="text-indigo-600 font-mono">${dailyLimit.toFixed(2)}</span>
+                <span className="text-indigo-600 font-mono">
+                  ${dailyLimit.toFixed(2)} USD
+                  {userPreferences?.currencyCode && userPreferences.currencyCode !== 'USD' && (
+                    <span className="text-slate-400 font-normal ml-1">
+                      (≈ {formatPrice(dailyLimit)})
+                    </span>
+                  )}
+                </span>
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 font-semibold">

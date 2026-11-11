@@ -126,6 +126,13 @@ async function runTests() {
     await send('Runtime.enable');
     await send('DOM.enable');
 
+    // Wait for React hydration and #app-sidebar to mount
+    for (let i = 0; i < 25; i++) {
+      const hasSidebar = await evaluate(`!!document.getElementById('app-sidebar')`);
+      if (hasSidebar) break;
+      await wait(500);
+    }
+
     console.log('\n--- 1. Testing Mobile Viewport Dimensions & Overflow ---');
     const testWidths = [320, 375, 390, 430];
 
@@ -394,3 +401,4 @@ async function runTests() {
 }
 
 runTests();
+

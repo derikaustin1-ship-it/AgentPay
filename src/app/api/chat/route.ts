@@ -11,7 +11,12 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, history } = body as { message: string; history?: ChatMessage[] };
+    const { message, history, countryCode, currencyCode } = body as {
+      message: string;
+      history?: ChatMessage[];
+      countryCode?: string;
+      currencyCode?: string;
+    };
 
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return NextResponse.json(
@@ -20,8 +25,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process through the AI shopping agent
-    const agentResponse = await processShoppingRequest(message.trim(), history || []);
+    // Process through the AI shopping agent with country and currency context
+    const agentResponse = await processShoppingRequest(
+      message.trim(),
+      history || [],
+      countryCode || 'US',
+      currencyCode || 'USD'
+    );
 
     return NextResponse.json({
       success: true,

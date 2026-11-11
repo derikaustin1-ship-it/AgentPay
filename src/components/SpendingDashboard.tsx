@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import CurrencyDisplay from './CurrencyDisplay';
 import {
   WalletIcon,
   TrendingUpIcon,
@@ -141,8 +142,15 @@ export default function SpendingDashboard() {
             </div>
           </div>
           <div>
-            <span className="text-2xl font-bold text-slate-900">${totalSpent.toFixed(2)}</span>
-            <span className="text-xs text-slate-400 block mt-0.5">USD (Sandbox)</span>
+            <div className="flex items-baseline space-x-2">
+              <span className="text-2xl font-bold text-slate-900">${totalSpent.toFixed(2)}</span>
+              <span className="text-xs text-slate-400">USD</span>
+            </div>
+            {state.userPreferences?.currencyCode && state.userPreferences.currencyCode !== 'USD' && (
+              <div className="text-xs text-blue-600 font-semibold mt-0.5">
+                ≈ <CurrencyDisplay amountUSD={totalSpent} size="sm" />
+              </div>
+            )}
           </div>
           <div className="mt-3 text-[11px] text-emerald-600 font-medium flex items-center gap-1 border-t border-slate-100 pt-2">
             <ShieldCheckIcon className="w-3.5 h-3.5" />
@@ -183,8 +191,15 @@ export default function SpendingDashboard() {
             </div>
           </div>
           <div>
-            <span className="text-2xl font-bold text-slate-900">${todaySpent.toFixed(2)}</span>
-            <span className="text-xs text-slate-400 block mt-0.5">USD spent today</span>
+            <div className="flex items-baseline space-x-2">
+              <span className="text-2xl font-bold text-slate-900">${todaySpent.toFixed(2)}</span>
+              <span className="text-xs text-slate-400">USD</span>
+            </div>
+            {state.userPreferences?.currencyCode && state.userPreferences.currencyCode !== 'USD' && (
+              <div className="text-xs text-blue-600 font-semibold mt-0.5">
+                ≈ <CurrencyDisplay amountUSD={todaySpent} size="sm" />
+              </div>
+            )}
           </div>
           <div className="mt-3 text-[11px] text-slate-500 border-t border-slate-100 pt-2 flex items-center justify-between">
             <span>Budget Utilization:</span>
@@ -367,7 +382,7 @@ export default function SpendingDashboard() {
                         {((ord.payment_status || ord.paymentStatus) === 'captured' ? 'SUCCESSFUL' : (ord.payment_status || ord.paymentStatus || 'PENDING')).toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-6 py-3.5 text-slate-400">
+                    <td suppressHydrationWarning className="px-6 py-3.5 text-slate-400">
                       {new Date(ord.created_at || ord.createdAt).toLocaleDateString()}
                     </td>
                   </tr>

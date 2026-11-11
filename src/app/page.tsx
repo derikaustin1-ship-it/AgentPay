@@ -14,6 +14,9 @@ import ProductComparison from '@/components/ProductComparison';
 import SpendingDashboard from '@/components/SpendingDashboard';
 import OrderHistory from '@/components/OrderHistory';
 import BudgetSettings from '@/components/BudgetSettings';
+import RewardsDashboard from '@/components/RewardsDashboard';
+import Settings from '@/components/Settings';
+import CountrySelector from '@/components/CountrySelector';
 import PaymentModal from '@/components/PaymentModal';
 import PaymentResultModal, { PaymentResultData } from '@/components/PaymentResultModal';
 
@@ -124,9 +127,14 @@ function AppContent() {
           {activePage === 'comparison' && <ProductComparison />}
           {activePage === 'spending' && <SpendingDashboard />}
           {activePage === 'orders' && <OrderHistory />}
+          {activePage === 'rewards' && <RewardsDashboard />}
           {activePage === 'budget' && <BudgetSettings />}
+          {activePage === 'settings' && <Settings />}
         </main>
       </div>
+
+      {/* Global Country & Currency Selection Modal */}
+      <CountrySelector />
 
       {/* Global Payment Approval Screen */}
       <PaymentModal />

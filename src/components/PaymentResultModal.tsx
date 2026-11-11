@@ -175,7 +175,7 @@ export default function PaymentResultModal({
                 </div>
                 <div className="flex justify-between items-center text-slate-500">
                   <span>Timestamp:</span>
-                  <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span suppressHydrationWarning>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
               </div>
 

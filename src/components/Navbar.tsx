@@ -8,8 +8,15 @@ import { useApp } from '@/context/AppContext';
 import { MenuIcon, ShieldCheckIcon, WalletIcon } from './Icons';
 
 export default function Navbar() {
-  const { state, dispatch } = useApp();
-  const { activePage, spendingSummary, budget, sidebarOpen } = state;
+  const { state, dispatch, formatPrice, openCountrySelector } = useApp();
+  const { activePage, spendingSummary, budget, sidebarOpen, userPreferences } = state;
+
+  const currentCountry = userPreferences?.country || {
+    flag: '🇺🇸',
+    name: 'United States',
+    code: 'US',
+    currencyCode: 'USD',
+  };
 
   const pageTitles: Record<string, { title: string; subtitle: string }> = {
     assistant: {
@@ -28,9 +35,17 @@ export default function Navbar() {
       title: 'Order History',
       subtitle: 'Verified records of PayPal Sandbox captured transactions',
     },
+    rewards: {
+      title: 'PayPal Rewards Intelligence',
+      subtitle: 'Researched cash back rules, regional eligibility, and program mechanics',
+    },
     budget: {
       title: 'Budget Settings',
       subtitle: 'Configure automated spending controls and maximum item limits',
+    },
+    settings: {
+      title: 'Preferences & Settings',
+      subtitle: 'Manage country, currency display, and account guardrails',
     },
   };
 
@@ -93,12 +108,26 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+        {/* Country & Currency Selector Trigger */}
+        <button
+          type="button"
+          onClick={openCountrySelector}
+          className="flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer"
+          title="Change Country & Currency"
+          aria-label="Change Country and Currency"
+        >
+          <span className="text-sm leading-none">{currentCountry.flag}</span>
+          <span className="font-bold">{userPreferences?.currencyCode || 'USD'}</span>
+        </button>
+
         {/* Real-time Budget Pill (Medium screens and up) */}
         <div className="hidden md:flex items-center space-x-2 bg-slate-50 border border-slate-200/80 px-3.5 py-1.5 rounded-full text-xs">
           <WalletIcon className="w-4 h-4 text-blue-600 shrink-0" />
           <span className="text-slate-500 font-medium">Daily Left:</span>
           <span className="font-bold text-slate-900">
-            ${spendingSummary ? spendingSummary.remainingDailyBudget.toFixed(2) : (budget?.dailySpendingLimit ? budget.dailySpendingLimit.toFixed(2) : '200.00')}
+            {spendingSummary
+              ? formatPrice(spendingSummary.remainingDailyBudget)
+              : formatPrice(budget?.dailySpendingLimit || 200)}
           </span>
         </div>
 

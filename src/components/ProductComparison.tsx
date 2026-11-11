@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ProductRecommendation } from '@/types';
 import SelectedProductSummary from './SelectedProductSummary';
+import CurrencyDisplay from './CurrencyDisplay';
 import {
   LayersIcon,
   StarIcon,
@@ -139,7 +140,7 @@ export default function ProductComparison() {
                     </span>
                     <h3 className="font-bold text-slate-900 text-base leading-snug">{product.name}</h3>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-                      <span className="text-2xl font-bold text-slate-900">${product.price.toFixed(2)}</span>
+                      <CurrencyDisplay amountUSD={product.price} showOriginal={true} size="lg" />
                       {product.rating && (
                         <div className="flex items-center space-x-1 text-amber-500 font-semibold text-xs">
                           <StarIcon className="w-4 h-4 fill-amber-400 text-amber-400" />

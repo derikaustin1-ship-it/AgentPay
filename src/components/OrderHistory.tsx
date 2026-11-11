@@ -374,7 +374,7 @@ export default function OrderHistory() {
                   <div className="min-w-0">
                     <h4 className="font-bold text-slate-900 text-sm truncate">{order.productName}</h4>
                     <div className="flex items-center gap-2 text-xs text-slate-500 mt-1 flex-wrap">
-                      <span className="font-medium text-slate-700">
+                      <span suppressHydrationWarning className="font-medium text-slate-700">
                         {dt.date} at {dt.time}
                       </span>
                       <span>•</span>
@@ -396,6 +396,11 @@ export default function OrderHistory() {
                     <span className="text-base font-bold text-slate-900 block">
                       ${order.amount.toFixed(2)} {order.currency}
                     </span>
+                    {order.displayAmount && order.displayCurrency && order.displayCurrency !== order.currency && (
+                      <span className="text-xs text-blue-600 font-medium block">
+                        ≈ {order.displayCurrency} {order.displayAmount.toFixed(2)}
+                      </span>
+                    )}
                     <span className="text-[10px] text-slate-400">
                       {isCaptured ? 'Captured in Sandbox' : 'No Charge Recorded'}
                     </span>

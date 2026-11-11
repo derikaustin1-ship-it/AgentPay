@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { BudgetValidationResult } from '@/types';
+import CurrencyDisplay from './CurrencyDisplay';
 import {
   ShieldCheckIcon,
   ShieldAlertIcon,
@@ -16,6 +17,7 @@ import {
   AlertCircleIcon,
   ArrowRightIcon,
   SlidersIcon,
+  AlertTriangleIcon,
 } from './Icons';
 
 export default function PaymentModal() {
@@ -196,8 +198,7 @@ export default function PaymentModal() {
                   <p className="text-xs text-slate-500">Sold by {product.seller}</p>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-slate-900 text-base">${validation.actualPrice.toFixed(2)}</span>
-                  <span className="text-[11px] text-slate-400 block">{validation.currency}</span>
+                  <CurrencyDisplay amountUSD={validation.actualPrice} showOriginal={true} size="md" />
                 </div>
               </div>
 
@@ -205,15 +206,21 @@ export default function PaymentModal() {
               <div className="space-y-1.5 text-xs border-y border-slate-100 py-2.5 text-slate-600">
                 <div className="flex justify-between">
                   <span>Server-Verified Product Price</span>
-                  <span className="font-medium text-slate-800">${validation.actualPrice.toFixed(2)} {validation.currency}</span>
+                  <span className="font-medium text-slate-800">${validation.actualPrice.toFixed(2)} USD</span>
                 </div>
+                {state.userPreferences?.currencyCode && state.userPreferences.currencyCode !== 'USD' && (
+                  <div className="flex justify-between text-blue-600 font-medium">
+                    <span>Local Display Equivalent</span>
+                    <CurrencyDisplay amountUSD={validation.actualPrice} size="sm" />
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Sandbox Testing Fee</span>
                   <span className="text-emerald-600 font-medium">$0.00 (Sandbox Free)</span>
                 </div>
                 <div className="flex justify-between font-bold text-slate-900 text-sm pt-2 border-t border-slate-100">
                   <span>Total Sandbox Payment</span>
-                  <span className="text-blue-600">${validation.actualPrice.toFixed(2)} {validation.currency}</span>
+                  <span className="text-blue-600">${validation.actualPrice.toFixed(2)} USD</span>
                 </div>
               </div>
 
@@ -231,10 +238,23 @@ export default function PaymentModal() {
                   )}
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-emerald-800 font-medium">
-                  <span>Single Purchase Limit: <strong>${validation.maxPurchaseAmount.toFixed(2)}</strong></span>
+                  <span>Single Purchase Limit: <strong>${validation.maxPurchaseAmount.toFixed(2)} USD</strong></span>
                   <span>Daily Remaining: <strong>${validation.remainingDailyBudget.toFixed(2)}</strong></span>
                 </div>
               </div>
+
+              {/* Regional India / Currency Notification */}
+              {state.userPreferences?.country?.paypalDomesticUnavailable && (
+                <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-[11px] text-amber-900 space-y-1">
+                  <div className="font-bold flex items-center space-x-1.5 text-amber-950">
+                    <AlertTriangleIcon className="w-3.5 h-3.5 text-amber-600" />
+                    <span>India Regional PayPal Gating</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    Domestic INR merchant payments between Indian PayPal accounts are restricted per RBI policies. This Sandbox checkout executes in USD equivalent.
+                  </p>
+                </div>
+              )}
 
               {/* Important Simulation & Approval Notice */}
               <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200/80 text-[11px] text-amber-900 space-y-1">

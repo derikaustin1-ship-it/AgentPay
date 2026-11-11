@@ -20,10 +20,34 @@ import {
 
 export default function ChatAssistant() {
   const { state, sendMessage, dispatch } = useApp();
-  const { messages, isProcessing, budget } = state;
+  const { messages, isProcessing, budget, userPreferences } = state;
   const [inputValue, setInputValue] = useState('');
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [mounted, setMounted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const loadingSteps = [
+    'Understanding your product requirements...',
+    'Searching live products across verified retailers...',
+    'Comparing prices, ratings, and specifications...',
+    'Evaluating budget limits and localizing currency...',
+  ];
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isProcessing) {
+      setLoadingStep(0);
+      interval = setInterval(() => {
+        setLoadingStep((prev) => (prev + 1) % loadingSteps.length);
+      }, 1200);
+    }
+    return () => clearInterval(interval);
+  }, [isProcessing]);
 
   const hasProducts = messages.some((m) => m.products && m.products.length > 0);
 
@@ -116,11 +140,13 @@ export default function ChatAssistant() {
                   {isUser ? 'You' : 'AgentPay Assistant'}
                 </span>
                 <span>•</span>
-                <span>
-                  {new Date(message.timestamp).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                <span suppressHydrationWarning>
+                  {mounted
+                    ? new Date(message.timestamp).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : ''}
                 </span>
               </div>
 
@@ -168,16 +194,30 @@ export default function ChatAssistant() {
           );
         })}
 
-        {/* Processing Indicator */}
+        {/* Multi-step Named Processing Indicator */}
         {isProcessing && (
-          <div className="flex items-start max-w-4xl mx-auto space-x-3">
+          <div className="flex items-start max-w-4xl mx-auto space-x-3 animate-in fade-in">
             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
               <SparklesIcon className="w-4 h-4 animate-spin" />
             </div>
-            <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-xs px-5 py-3 shadow-xs">
-              <div className="flex items-center space-x-2 text-xs text-slate-600 font-medium">
+            <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-xs px-5 py-3 shadow-xs space-y-1.5">
+              <div className="flex items-center space-x-2 text-xs text-slate-800 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
-                <span>AI Agent querying Channel3 live retailer offers, comparing specs with Gemini, and checking budget...</span>
+                <span>{loadingSteps[loadingStep]}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {loadingSteps.map((_, sIdx) => (
+                  <div
+                    key={sIdx}
+                    className={`h-1 rounded-full transition-all duration-300 ${
+                      sIdx === loadingStep
+                        ? 'w-6 bg-blue-600'
+                        : sIdx < loadingStep
+                        ? 'w-2 bg-emerald-500'
+                        : 'w-2 bg-slate-200'
+                    }`}
+                  />
+                ))}
               </div>
             </div>
           </div>

@@ -78,6 +78,11 @@ export interface DbOrder {
   payment_status: 'pending' | 'approved' | 'captured' | 'cancelled' | 'failed';
   created_at: string;
   is_sandbox: number;
+  // Converted / display currency metadata
+  display_amount?: number;
+  display_currency?: string;
+  exchange_rate?: number;
+  exchange_rate_timestamp?: string;
 }
 
 export interface DbShoppingPreference {
@@ -88,12 +93,21 @@ export interface DbShoppingPreference {
   max_budget: number | null;
 }
 
+export interface DbUserPreference {
+  id: string;
+  user_id: string;
+  country_code: string;
+  currency_code: string;
+  updated_at: string;
+}
+
 interface DatabaseSchema {
   users: DbUser[];
   user_budgets: DbUserBudget[];
   products: DbProduct[];
   orders: DbOrder[];
   shopping_preferences: DbShoppingPreference[];
+  user_preferences: DbUserPreference[];
 }
 
 const DEFAULT_DEMO_PRODUCTS: DbProduct[] = [
@@ -478,6 +492,7 @@ function readDb(): DatabaseSchema {
         products: DEFAULT_DEMO_PRODUCTS,
         orders: [],
         shopping_preferences: [],
+        user_preferences: [],
       };
       fs.writeFileSync(dbPath, JSON.stringify(initialData, null, 2), 'utf8');
       return initialData;
@@ -486,6 +501,10 @@ function readDb(): DatabaseSchema {
     const parsed = JSON.parse(raw) as DatabaseSchema;
     if (!parsed.products || parsed.products.length === 0) {
       parsed.products = DEFAULT_DEMO_PRODUCTS;
+      fs.writeFileSync(dbPath, JSON.stringify(parsed, null, 2), 'utf8');
+    }
+    if (!parsed.user_preferences) {
+      parsed.user_preferences = [];
       fs.writeFileSync(dbPath, JSON.stringify(parsed, null, 2), 'utf8');
     }
     return parsed;
@@ -497,6 +516,7 @@ function readDb(): DatabaseSchema {
       products: DEFAULT_DEMO_PRODUCTS,
       orders: [],
       shopping_preferences: [],
+      user_preferences: [],
     };
   }
 }
@@ -628,6 +648,10 @@ export function createOrder(order: {
   amount: number;
   currency: string;
   paymentStatus: 'pending' | 'approved' | 'captured' | 'cancelled' | 'failed' | string;
+  displayAmount?: number;
+  displayCurrency?: string;
+  exchangeRate?: number;
+  exchangeRateTimestamp?: string;
 }): void {
   const db = readDb();
   // Prevent duplicate order creation if an order with this PayPal Order ID already exists
@@ -637,6 +661,10 @@ export function createOrder(order: {
     if (order.paypalCaptureId) {
       existingOrder.paypal_capture_id = order.paypalCaptureId;
     }
+    if (order.displayAmount !== undefined) existingOrder.display_amount = order.displayAmount;
+    if (order.displayCurrency !== undefined) existingOrder.display_currency = order.displayCurrency;
+    if (order.exchangeRate !== undefined) existingOrder.exchange_rate = order.exchangeRate;
+    if (order.exchangeRateTimestamp !== undefined) existingOrder.exchange_rate_timestamp = order.exchangeRateTimestamp;
     writeDb(db);
     return;
   }
@@ -654,6 +682,10 @@ export function createOrder(order: {
     payment_status: order.paymentStatus as DbOrder['payment_status'],
     created_at: new Date().toISOString(),
     is_sandbox: 1,
+    display_amount: order.displayAmount,
+    display_currency: order.displayCurrency,
+    exchange_rate: order.exchangeRate,
+    exchange_rate_timestamp: order.exchangeRateTimestamp,
   });
   writeDb(db);
 }
@@ -728,4 +760,45 @@ export function isOrderAlreadyCaptured(paypalOrderId: string): boolean {
   const db = readDb();
   return db.orders.some(o => o.paypal_order_id === paypalOrderId && o.payment_status === 'captured');
 }
+
+/** Get user country and currency preferences */
+export function getUserPreference(userId: string): DbUserPreference | undefined {
+  const db = readDb();
+  return db.user_preferences?.find(p => p.user_id === userId);
+}
+
+/** Update or set user country and currency preferences */
+export function updateUserPreference(
+  userId: string,
+  countryCode: string,
+  currencyCode: string
+): DbUserPreference {
+  const db = readDb();
+  if (!db.user_preferences) {
+    db.user_preferences = [];
+  }
+
+  const existingIndex = db.user_preferences.findIndex(p => p.user_id === userId);
+  const now = new Date().toISOString();
+
+  if (existingIndex >= 0) {
+    db.user_preferences[existingIndex].country_code = countryCode.toUpperCase();
+    db.user_preferences[existingIndex].currency_code = currencyCode.toUpperCase();
+    db.user_preferences[existingIndex].updated_at = now;
+    writeDb(db);
+    return db.user_preferences[existingIndex];
+  } else {
+    const newPref: DbUserPreference = {
+      id: `pref-${Date.now()}`,
+      user_id: userId,
+      country_code: countryCode.toUpperCase(),
+      currency_code: currencyCode.toUpperCase(),
+      updated_at: now,
+    };
+    db.user_preferences.push(newPref);
+    writeDb(db);
+    return newPref;
+  }
+}
+
 

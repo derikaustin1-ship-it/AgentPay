@@ -222,7 +222,9 @@ function generateFallbackReasoning(
 
 export async function processShoppingRequest(
   userMessage: string,
-  chatHistory: ChatMessage[]
+  chatHistory: ChatMessage[],
+  countryCode: string = 'US',
+  currencyCode: string = 'USD'
 ): Promise<AgentResponse> {
   try {
     let requirements: ShoppingRequirements;
@@ -360,6 +362,8 @@ Could you try:
       spendingCheck,
       comparisonSummary,
       isLive,
+      countryCode,
+      currencyCode,
     });
 
     return {
@@ -386,6 +390,8 @@ interface FormatAgentResponseParams {
   spendingCheck?: SpendingCheck;
   comparisonSummary?: string;
   isLive: boolean;
+  countryCode?: string;
+  currencyCode?: string;
 }
 
 function formatAgentResponse({
@@ -394,6 +400,8 @@ function formatAgentResponse({
   spendingCheck,
   comparisonSummary,
   isLive,
+  countryCode,
+  currencyCode,
 }: FormatAgentResponseParams): string {
   const parts: string[] = [];
 
@@ -413,6 +421,9 @@ function formatAgentResponse({
     parts.push(`*🛍️ Sourced in real time from verified online retailers via **Channel3 Search API**.*`);
   } else {
     parts.push(`*📋 Demonstration catalog items.*`);
+  }
+  if (countryCode && countryCode !== 'US' && currencyCode && currencyCode !== 'USD') {
+    parts.push(`*🌍 Note: Display prices are converted to **${currencyCode}** based on live exchange rates.*`);
   }
   parts.push('');
 

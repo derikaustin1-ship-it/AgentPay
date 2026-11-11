@@ -7,6 +7,7 @@
 import React from 'react';
 import { ProductRecommendation } from '@/types';
 import { useApp } from '@/context/AppContext';
+import CurrencyDisplay from './CurrencyDisplay';
 import {
   StarIcon,
   ShieldAlertIcon,
@@ -77,10 +78,9 @@ export default function ProductCard({ recommendation, rank }: ProductCardProps) 
             )}
           </div>
 
-          {/* Price overlay at bottom of image */}
+          {/* Price overlay at bottom of image with live currency conversion */}
           <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-white/50">
-            <span className="text-xs text-slate-500 font-medium">USD </span>
-            <span className="text-xl font-bold text-slate-900">${product.price.toFixed(2)}</span>
+            <CurrencyDisplay amountUSD={product.price} showOriginal={true} size="md" />
           </div>
         </div>
 

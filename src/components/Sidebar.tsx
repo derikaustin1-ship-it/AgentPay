@@ -14,18 +14,30 @@ import {
   ShieldCheckIcon,
   LayersIcon,
   XIcon,
+  GiftIcon,
+  SettingsIcon,
+  GlobeIcon,
 } from './Icons';
 
 export default function Sidebar() {
-  const { state, dispatch } = useApp();
-  const { activePage, budget, spendingSummary, sidebarOpen } = state;
+  const { state, dispatch, formatPrice, openCountrySelector } = useApp();
+  const { activePage, budget, spendingSummary, sidebarOpen, userPreferences } = state;
+
+  const currentCountry = userPreferences?.country || {
+    flag: '🇺🇸',
+    name: 'United States',
+    code: 'US',
+    currencyCode: 'USD',
+  };
 
   const navItems = [
     { id: 'assistant', label: 'AI Shopping Assistant', icon: SparklesIcon, badge: 'Agentic' },
     { id: 'comparison', label: 'Product Comparison', icon: LayersIcon },
     { id: 'spending', label: 'Spending Dashboard', icon: WalletIcon },
     { id: 'orders', label: 'Order History', icon: HistoryIcon, count: state.orders.length },
+    { id: 'rewards', label: 'PayPal Rewards', icon: GiftIcon, badge: 'Insights' },
     { id: 'budget', label: 'Budget Settings', icon: SlidersIcon },
+    { id: 'settings', label: 'Preferences', icon: SettingsIcon },
   ];
 
   // Close sidebar on Escape key press
@@ -162,13 +174,40 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        {/* Footer / Live Budget Overview */}
-        <div className="p-4 border-t border-slate-800 bg-slate-900/60 shrink-0">
-          <div className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60 mb-3">
+        {/* Footer / Live Budget & Localization Overview */}
+        <div className="p-4 border-t border-slate-800 bg-slate-900/60 shrink-0 space-y-3">
+          {/* Active Country / Currency Pill */}
+          <button
+            type="button"
+            onClick={openCountrySelector}
+            className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition-colors text-xs cursor-pointer group"
+            title="Click to change country or currency"
+          >
+            <div className="flex items-center space-x-2 truncate">
+              <span className="text-lg leading-none">{currentCountry.flag}</span>
+              <div className="text-left truncate">
+                <span className="font-semibold text-slate-200 block truncate leading-tight">
+                  {currentCountry.name}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {userPreferences?.currencyCode || 'USD'}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-1 text-slate-400 group-hover:text-blue-400 transition-colors shrink-0">
+              <GlobeIcon className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-medium">Change</span>
+            </div>
+          </button>
+
+          <div className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/60">
             <div className="flex items-center justify-between text-xs mb-1.5">
               <span className="text-slate-400 font-medium">Daily Budget</span>
               <span className="text-emerald-400 font-semibold">
-                ${spendingSummary ? spendingSummary.remainingDailyBudget.toFixed(2) : '200.00'} left
+                {spendingSummary
+                  ? formatPrice(spendingSummary.remainingDailyBudget)
+                  : formatPrice(200)}{' '}
+                left
               </span>
             </div>
             <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
@@ -180,12 +219,12 @@ export default function Sidebar() {
               />
             </div>
             <div className="flex justify-between items-center text-[11px] text-slate-400 mt-2">
-              <span>Limit: ${budget ? budget.dailySpendingLimit.toFixed(2) : '200.00'}</span>
-              <span>Max item: ${budget ? budget.maxPurchaseAmount.toFixed(2) : '100.00'}</span>
+              <span>Limit: {formatPrice(budget ? budget.dailySpendingLimit : 200)}</span>
+              <span>Max: {formatPrice(budget ? budget.maxPurchaseAmount : 100)}</span>
             </div>
           </div>
 
-          <div className="flex items-center justify-between px-2 py-1.5 text-xs text-slate-400">
+          <div className="flex items-center justify-between px-2 py-1 text-xs text-slate-400">
             <div className="flex items-center space-x-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-medium text-slate-300">PayPal Sandbox</span>
